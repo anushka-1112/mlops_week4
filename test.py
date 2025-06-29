@@ -1,36 +1,36 @@
+import unittest
 import pandas as pd
-import joblib
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
 import numpy as np
-from sklearn.metrics import accuracy_score
+from tensorflow.keras.models import load_model
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-def test_model_accuracy_on_sample():
-    # Load sample data
-    df = pd.read_csv("data/sample.csv")
-    X = df.drop("species", axis=1)
-    y_true_labels = df["species"]
+class TestModelAccuracy(unittest.TestCase):
+    def setUp(self):
+        # Load model
+        self.model = load_model('iris_model.h5')
 
-    # Load encoder and scaler
-    le = joblib.load("label_encoder.pkl")
-    scaler = joblib.load("scaler.pkl")
+        # Load sample data
+        df = pd.read_csv('sample.csv')
+        self.X = df.drop('species', axis=1)
+        y = df['species']
 
-    y_true = le.transform(y_true_labels)
-    X = scaler.transform(X)
+        # Encode labels
+        self.le = LabelEncoder()
+        self.le.fit(['setosa', 'versicolor', 'virginica'])
+        self.y_encoded = self.le.transform(y)
 
-    # Build and load model
-    model = Sequential([
-        Dense(64, activation='relu', input_shape=(X.shape[1],)),
-        Dropout(0.3),
-        Dense(32, activation='relu'),
-        Dropout(0.3),
-        Dense(3, activation='softmax')
-    ])
-    model.load_weights("iris_model.weights.h5")
+        # Simulate the original training scaler
+        self.scaler = StandardScaler()
+        self.scaler.mean_ = np.array([5.843, 3.054, 3.759, 1.199])
+        self.scaler.scale_ = np.array([0.828, 0.433, 1.764, 0.763])
+        self.scaler.var_ = self.scaler.scale_ ** 2
+        self.scaler.n_features_in_ = self.X.shape[1]
 
-    # Predict and calculate accuracy
-    y_pred_probs = model.predict(X)
-    y_pred = np.argmax(y_pred_probs, axis=1)
+        self.X_scaled = self.scaler.transform(self.X)
 
-    accuracy = accuracy_score(y_true, y_pred)
-    assert accuracy >= 0.80, f"Model accuracy {accuracy:.2f} is below expected threshold"
+    def test_accuracy_on_sample(self):
+        _, accuracy = self.model.evaluate(self.X_scaled, self.y_encoded, verbose=0)
+        self.assertGreater(accuracy, 0.90, "Model accuracy is not greater than 90% on sample.csv")
+
+if __name__ == '__main__':
+    unittest.main()

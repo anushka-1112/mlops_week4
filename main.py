@@ -52,3 +52,6 @@ model.fit(
 
 # Save model weights
 model.save_weights("iris_model.weights.h5")
+# Save the entire model (architecture + weights + optimizer state)
+model.save("iris_model.h5")
+
